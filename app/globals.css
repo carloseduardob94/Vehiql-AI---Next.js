@@ -57,6 +57,7 @@
 
     --radius: 0.5rem
   }
+
   .dark {
 
     --background: 0 0% 3.9%;
@@ -115,7 +116,25 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+.dotted-background {
+  background-color: #16223C;
+  background-image: radial-gradient(rgba(255, 255, 255, .28) 1px,
+      transparent 1px);
+  background-size: 30px 30px;
+}
+
+@layer utilities {
+  .gradient {
+    @apply bg-gradient-to-br from-blue-500 to-green-500
+  }
+
+  .gradient-title {
+    @apply gradient font-extrabold tracking-tighter pr-2 pb-2 text-transparent bg-clip-text
   }
 }
