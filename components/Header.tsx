@@ -9,7 +9,6 @@ const Header = async ({ isAdminPage = false }) => {
   const user = await checkUser()
 
   const isAdmin = user?.role === "ADMIN";
-  console.log(user?.role)
 
   return (
     <div>
