@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { ArrowLeft, CarFront, Heart, Layout } from "lucide-react";
 
 const Header = async ({ isAdminPage = false }) => {
-  const isAdmin = false
+  const isAdmin = true
 
   return (
     <div>
