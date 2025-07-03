@@ -1,5 +1,6 @@
 
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import { cookies } from "next/headers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,8 +12,7 @@ if (!supabaseUrl || !supabaseKey) {
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-export const createClient = async () => {
-  const cookieStore = await cookies();
+export const createClient = async (cookieStore: ReadonlyRequestCookies) => {
 
   return createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
