@@ -1,10 +1,12 @@
 "use server";
 
+import { serializedCarData } from "@/lib/helper";
 import { db } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
-import { CarData } from "@/types/carData"
+import { CarData, CarStatus } from "@/types/carData"
 import { auth } from "@clerk/nextjs/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers";
 import { v4 as uuidv4 } from "uuid"
@@ -117,7 +119,7 @@ export async function processCarImageWithAI(file: File) {
 }
 
 export async function addCar({ carData, images }: { carData: CarData, images: string[] }) {
-  const cookieStore = await cookies()
+
   try {
     const { userId } = await auth()
     if (!userId) throw new Error("Unauthorized");
@@ -131,6 +133,7 @@ export async function addCar({ carData, images }: { carData: CarData, images: st
     const carId = uuidv4();
     const folderPath = `cars/${carId}`;
 
+    const cookieStore = await cookies()
     const supabase = await createClient(cookieStore)
 
     const imageUrls = []
@@ -206,5 +209,161 @@ export async function addCar({ carData, images }: { carData: CarData, images: st
     const errorMessage =
       error instanceof Error ? error.message : String(error)
     throw new Error("Error adding car:" + errorMessage)
+  }
+}
+
+export async function getCars(search = "") {
+  try {
+    const { userId } = await auth()
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId }
+    });
+
+    if (!user) throw new Error("User not found");
+
+    let where: Prisma.CarWhereInput = {};
+
+    if (search) {
+      where.OR = [
+        { make: { contains: search, mode: "insensitive" } },
+        { model: { contains: search, mode: "insensitive" } },
+        { color: { contains: search, mode: "insensitive" } }
+      ]
+    }
+
+    const cars = await db.car.findMany({
+      where,
+      orderBy: { createdAt: "desc" }
+    });
+
+    const serializedCars = cars.map(car => serializedCarData(car))
+
+    return {
+      success: true,
+      data: serializedCars
+    }
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error)
+    console.error("Error fetching cars:", errorMessage);
+
+    return {
+      success: false,
+      error: errorMessage
+    }
+  }
+}
+
+export async function deleteCar(id: string) {
+  try {
+    const { userId } = await auth()
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId }
+    });
+
+    if (!user) throw new Error("User not found");
+
+    const car = await db.car.findUnique({
+      where: { id },
+      select: { images: true }
+    });
+
+    if (!car) {
+      return {
+        success: false,
+        error: "Car not found"
+      }
+    }
+
+    await db.car.delete({
+      where: { id },
+    });
+
+    try {
+      const cookieStore = await cookies()
+      const supabase = await createClient(cookieStore)
+
+      const filePaths = car.images.map((imageUrl) => {
+        const url = new URL(imageUrl);
+        const pathMatch = url.pathname.match(/\/car-images\/(.*)/);
+
+        return pathMatch ? pathMatch[1] : null
+      }).filter(Boolean)
+
+      if (filePaths.length > 0) {
+        const { error } = await supabase.storage
+          .from("car-images")
+          .remove(filePaths as string[])
+
+        if (error) {
+          console.error("Error deleting images:", error)
+        }
+      }
+    } catch (storageError) {
+      console.error("Error with storage operations:", storageError)
+    }
+
+    revalidatePath("/admin/cars");
+
+    return {
+      success: true
+    };
+
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error)
+    console.error("Error deleting car:", errorMessage);
+
+    return {
+      success: false,
+      error: errorMessage
+    }
+  }
+}
+
+export async function updateCarStatus(id: string, { status, featured }: { status: CarStatus, featured: boolean }) {
+  try {
+    const { userId } = await auth()
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId }
+    });
+
+    if (!user) throw new Error("User not found");
+
+    const updateData: Prisma.CarUpdateInput = {};
+
+    if (status !== undefined) {
+      updateData.status = status
+    }
+
+    if (featured !== undefined) {
+      updateData.featured = featured
+    }
+
+    await db.car.update({
+      where: { id },
+      data: updateData
+    });
+
+    revalidatePath("/admin/cars");
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error)
+    console.error("Error deleting car:", errorMessage);
+
+    return {
+      success: false,
+      error: errorMessage
+    }
   }
 }

@@ -13,6 +13,8 @@ export type CarData = {
   status: CarStatus;
   featured: boolean;
   confidence?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export enum CarStatus {
