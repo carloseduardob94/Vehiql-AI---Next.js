@@ -2,17 +2,17 @@ export type CarData = {
   make: string;
   model: string;
   year: number;
-  color: string;
-  price: string;
+  price: number;
   mileage: number;
-  bodyType: string;
+  color: string;
   fuelType: string;
   transmission: string;
-  description: string;
-  confidence: number;
+  bodyType: string;
   seats?: number;
+  description: string;
   status: CarStatus;
-  featured: boolean
+  featured: boolean;
+  confidence?: number;
 };
 
 export enum CarStatus {

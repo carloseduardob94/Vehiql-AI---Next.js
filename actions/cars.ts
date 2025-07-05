@@ -1,11 +1,12 @@
+"use server";
+
 import { db } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { CarData } from "@/types/carData"
 import { auth } from "@clerk/nextjs/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { revalidatePath } from "next/cache"
-import { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies"
-import { cookies } from "next/headers"
+import { cookies } from "next/headers";
 import { v4 as uuidv4 } from "uuid"
 
 async function fileToBase64(file: File) {
@@ -19,7 +20,7 @@ export async function processCarImageWithAI(file: File) {
   try {
     const GeminiApiKey = process.env.GEMINI_API_KEY!
 
-    if (GeminiApiKey) {
+    if (!GeminiApiKey) {
       throw new Error("Gemini API key is not configured")
     }
 
@@ -115,7 +116,8 @@ export async function processCarImageWithAI(file: File) {
   }
 }
 
-export async function addCar({ carData, images, cookieStore }: { carData: CarData, images: string[], cookieStore: ReadonlyRequestCookies }) {
+export async function addCar({ carData, images }: { carData: CarData, images: string[] }) {
+  const cookieStore = await cookies()
   try {
     const { userId } = await auth()
     if (!userId) throw new Error("Unauthorized");
